@@ -1,0 +1,1 @@
+Batch-loading progress: 4,050,000 source rows processed and new requests inserted, with a saved position for continuing later.

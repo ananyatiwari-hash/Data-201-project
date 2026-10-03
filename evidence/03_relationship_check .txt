@@ -1,0 +1,1 @@
+Referential integrity: three zeros show no unmatched agency, category, or non-null location references.
