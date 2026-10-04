@@ -1,7 +1,7 @@
 # NYC 311 Service Requests Database
 
 DATA 201 — Database Technologies for Data Intelligence Applications  
-Progress documented: October 3, 2026
+Progress updated: October 3, 2026 (late evening; A2 execution pending)
 
 ## Project overview
 
@@ -22,7 +22,26 @@ The full CSV has been imported into a staging table. We have loaded a working su
 | Earlier sample requests retained | 2,025 |
 | Total relational service requests | 4,052,025 |
 
-The staging count describes our downloaded snapshot, not the changing total on the live NYC Open Data website. The foreign-key relationship audit has been prepared, but its result has not yet been recorded. Analytical queries and a dashboard are future work.
+The staging count describes our downloaded snapshot, not the changing total on the live NYC Open Data website. The three-part relationship audit has now returned **0 unmatched agency, category, or non-null location references**. Basic SQL exploration and Godwin's two basic analyses have been executed; the advanced portfolio is still in progress. A dashboard is planned for the final project.
+
+### Team handoff — where work stopped (October 3, 2026)
+
+**Completed:** source/staging load and checkpoint, four-table schema and ER diagram, four-table joined sample (10 rows), all three foreign keys and all four primary keys confirmed in MySQL metadata, duplicate category/location tuple checks (both returned no rows), relationship audit (all three counts zero), and Q1–Q4 in `05_exploration.sql`.
+
+**Godwin's individual SQL portfolio:**
+
+| ID | Saved local script | Project question / technique | Status |
+|---|---|---|---|
+| B1 | `01_godwin_basic_analysis.sql` | Request totals by borough; `LEFT JOIN`, aggregation | Tested; 7 result groups |
+| B2 | `02_godwin_basic_analysis.sql` | Top 10 complaint types; join, aggregation, `LIMIT` | Tested; 10 rows |
+| A1 | `01_godwin_advanced_analysis.sql` | Complaint counts ranked citywide; derived-table subquery and `DENSE_RANK()` | Tested; 5 rows. Overlaps B2 in business question; consider a distinct replacement before final portfolio approval |
+| A2 | `02_godwin_advanced_analysis.sql` | Complaint-type rank *within each borough*; derived table and `DENSE_RANK() OVER (PARTITION BY Borough ...)` | **Running in Workbench at last screenshot (Action 119). No result or error confirmed yet; do not call it complete** |
+
+Godwin's two basic queries are complete. A1 has been executed; A2 is awaiting execution output. There are **no CTEs in these individual advanced queries yet** (reserved until covered in class). Four group members together need at least **8 basic + 8 advanced, distinct, meaningful queries** for the October 8 mid-presentation. Each member's portfolio and code contributions still need to be checked separately.
+
+**A2 handoff:** The current version ranks all complaint types for five boroughs, not only the top three. Once its execution status is known, wrap the ranked output in another derived table and apply `WHERE ComplaintRank <= 3` to return three ranks per borough (ties may yield more than 15 rows). A2 can be slow because it joins/group-aggregates approximately four million requests. Check Workbench Action Output before retrying or concluding that it failed.
+
+**Immediate next actions:** 1) capture A2 completion or error and finalize its top-three filter; 2) review A1's overlap with B2; 3) collect teammates' SQL scripts and actual MySQL results; 4) organize evidence and GitHub commit-history screenshot (last presentation slide); 5) prepare mid-presentation slides and rehearse a maximum 10-minute talk plus 3-minute Q&A. Full final report/dashboard work is due December 3, not October 8.
 
 ## 1. Dataset introduction and motivation
 
@@ -217,6 +236,8 @@ The intended functional dependencies are:
 
 This is a 3NF design under these stated business assumptions, rather than a claim that surrogate IDs alone prove normalization. A problem may have several details. A ZIP code is not treated as a guaranteed determinant of every reported location field, and reported address/coordinate tuples are not treated as a verified master address directory.
 
+**October 3 verification update:** `information_schema.KEY_COLUMN_USAGE` showed one PK each on `agency.AgencyCode`, `problemcategory.CategoryID`, `location.LocationID`, and `servicerequest.RequestID`; the latter table has three FK constraints to the parent tables. Duplicate checks for `(Problem, ProblemDetail)` and for the six location descriptive fields returned zero repeated tuples in this loaded state. These are factual integrity checks, not by themselves a formal proof of all business-level functional dependencies.
+
 The category and location lookup indexes are **nonunique**. The loader uses distinct values and existing-row checks to reuse matching records, but those indexes do not themselves enforce natural-key uniqueness against arbitrary manual inserts. Nullable natural-key uniqueness is an area for future schema improvement.
 
 ## 3. How the database was built and loaded
@@ -380,9 +401,9 @@ SELECT 'servicerequest', COUNT(*)
 FROM nyc_311_database.servicerequest;
 ```
 
-### Relationship audit — result pending
+### Relationship audit — executed and passed
 
-This checks for foreign-key values with no matching parent row. All three counts are expected to be zero, but the output has not yet been supplied.
+MySQL Workbench returned `MissingAgency = 0`, `MissingCategory = 0`, and `MissingLocation = 0` (counting only non-null location references). Evidence: `03_relationship_check .png`.
 
 ```sql
 SELECT
@@ -399,7 +420,7 @@ LEFT JOIN nyc_311_database.location AS l
     ON s.LocationID = l.LocationID;
 ```
 
-### Example joined query — proposed, not yet executed
+### Four-table joined sample — executed successfully
 
 ```sql
 SELECT
@@ -421,7 +442,7 @@ ORDER BY s.RequestID
 LIMIT 10;
 ```
 
-This would display request details together with their agency, problem category, and borough. Its output still needs to be saved as evidence.
+A version of this query using `LEFT JOIN` for all three parent tables, and including `City`, returned **10 sample rows** with agency, problem, borough/city, creation date, and status. Save the executed version as `sql/06_join_validation.sql` and its screenshot as `evidence/06_join_validation.png` if not already uploaded. The query above is an earlier illustrative variant, not the exact screenshot version.
 
 ## 5. Challenges and solutions
 
@@ -463,14 +484,28 @@ Smaller calls reduce the chance of hitting the client timeout, although their du
 
 The complete loader definition is in the working Workbench script. Save that corrected script separately in the project repository; this README documents the workflow and does not replace that executable loader.
 
-## 7. Remaining work
+## 7. Remaining work (mid-presentation handoff)
 
-1. Record the relationship-audit result and a joined sample output.
-2. Measure the loaded date coverage and examine closure dates earlier than creation dates before calculating response-time metrics.
-3. Explain the subset-selection method and limit all analytical claims to that scope.
-4. Complete the required basic and advanced SQL analysis, saving code, results, and explanations.
-5. Add the schema diagram, verified counts, challenges, and team contributions to the presentation.
-6. Save scripts and evidence in the team repository; back up the working relational database and checkpoint.
+1. **A2 in progress:** Inspect Workbench Action 119 for completion/error. Do not count A2 as verified before reviewing its output. Afterward, restrict the ranking to the top three per borough using an outer derived table; save SQL and screenshot.
+2. **Individual SQL:** B1 and B2 passed; A1 passed technically but overlaps B2's question, so consider revising/replacing it for a distinct analytical contribution. Check Godwin's two qualifying advanced queries and collect the other three members' scripts/results. Mid-presentation minimum for four members: eight basic + eight advanced SQL queries, linked to the project questions. Not all need to be shown on the slides.
+3. **Completed verification to retain:** three real FK constraints, four PKs, zero unmatched relationship references, successful 10-row four-table join, and no repeated full category or location tuples in the tested loaded tables. Keep `sql/07_schema_verification.sql` and corresponding screenshots if not already uploaded. These checks support integrity; duplicate checks alone do not prove 3NF (see dependency assumptions in Section 2).
+4. **Data-quality limitations:** Loaded request dates span `2020-01-01 00:00:00` to `2026-10-01 02:05:23`; `47,539` requests have missing closure dates, and `25,000` have `ClosedDate < CreatedDate`. Exclude NULL/negative durations from future resolution-time calculations and investigate anomalous records rather than silently treating them as valid.
+5. **Subset scope:** The current relational sample consists of an existing 2,025-row sample plus 4,050,000 incrementally inserted rows. The latter were selected in ascending *text* `RequestID_Check` order from the source snapshot, so the loaded subset is neither random nor representative; its yearly coverage is uneven: 2020 `2,940,153`; 2021 `1,107,739`; 2025 `2,108`; 2026 `2,025`. Findings must be qualified as applying to the loaded subset only.
+6. **GitHub/README:** Ensure the repository contains the schema, source import, validation, incremental loader, exploration, join and schema-verification scripts; ER image and result screenshots. Preserve existing `README.md` history and document any changed script names. Confirm contributor commits; do not claim teammates' work has been verified without seeing it. Back up the local relational database and loading checkpoint.
+7. **Slides:** October 8, 2026, 11:59 PM file-upload deadline, **10-minute presentation + 3-minute Q&A**, with a project repository link. Cover motivation/source/size, schema/PK/FK, 3NF explanation, import evidence, selected SQL code+results+insights, loading/data-quality/performance challenges, and next steps. The **last slide must show each group member's contribution evidence** (e.g., commit history). Verify total SQL count from repository rather than trying to present every query.
+8. **Rubric clarifications:** retain the agency-row-count and per-table attributes questions below. Dashboard, full technical report, 5 advanced queries and 2 visualizations per member belong to the December 3 final submission.
+
+### Verified exploration results (from MySQL Workbench screenshots)
+
+| Check / query | Observed result |
+|---|---|
+| `05_exploration.sql` table counts | Agency 19; categories 1,173; locations 804,027; service requests 4,052,025 |
+| Date audit | Earliest 2020-01-01; latest 2026-10-01; NULL `ClosedDate` 47,539; closure before creation 25,000 |
+| Request count by year | 2020: 2,940,153; 2021: 1,107,739; 2025: 2,108; 2026: 2,025 |
+| Requests by agency (top three) | NYPD 1,691,021; DSNY 654,948; HPD 637,424 |
+| Godwin B1: by borough | Brooklyn 1,197,472; Queens 977,958; Bronx 839,649; Manhattan 782,239; Staten Island 197,827; Unknown 38,433; Unspecified 18,447 |
+| Godwin B2: top complaint | Noise - Residential 535,480; Request Large Bulky Item Collection 397,870; Illegal Parking 300,766 |
+| Godwin A1 | `DENSE_RANK()` returned the five citywide complaint ranks, agreeing with B2 counts |
 
 ### Course requirements to clarify
 
@@ -484,4 +519,4 @@ There are two remaining rubric questions. The dataset-selection slide asks for h
 - DATA 201, `DATA201_Lecture1_Introduction (4).pdf`: PDF pages 50–54 for project requirements and page 62 for the final-presentation rubric.
 - Project evidence: CSV record count, SQL definitions, and MySQL Workbench outputs supplied during the build and import process.
 
-ChatGPT/Codex assisted with SQL drafting and debugging, explanations, and preparation of this README. SQL was executed locally in MySQL Workbench and the returned outputs were reviewed during the project. The course requires disclosure of the tool, how it was used, and exact prompts; retain the relevant conversation/prompt history with the final submission and ensure team members can explain the submitted work. This paragraph is a summary of assistance, not a complete prompt log.
+
