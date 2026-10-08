@@ -1,13 +1,7 @@
 USE nyc_311_database;
 
--- B2 (Ananya): Which agencies take the longest to close a request?
--- Question: Average and longest time to close (in hours) per agency.
--- Techniques: INNER JOIN, WHERE filtering, TIMESTAMPDIFF, AVG/MAX, GROUP BY, HAVING.
---
--- Data-quality filter (see date audit in README): 47,539 requests have no ClosedDate
--- and 25,000 have ClosedDate < CreatedDate. Both are excluded so they do not
--- distort the average. HAVING drops agencies with too few closed requests
--- to give a meaningful average.
+-- B2: Average hours to close a request, by agency.
+-- Techniques: JOIN, WHERE, AVG, GROUP BY, HAVING.
 
 SELECT
     a.AgencyCode,
